@@ -5,13 +5,15 @@ import { getAuth } from "firebase/auth";
 
 // TODO: Replace the following with your app's Firebase project configuration
 // Get these from: Firebase Console -> Project Settings -> General -> Your Apps
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCLFHSOiq15OzwFKJcOO1D925NhKyu3mOc",
+  authDomain: "cers-plus.firebaseapp.com",
+  projectId: "cers-plus",
+  storageBucket: "cers-plus.firebasestorage.app",
+  messagingSenderId: "994111835488",
+  appId: "1:994111835488:web:d56db532de4975d50ca205",
+  measurementId: "G-4JC1DVST9P"
 };
 
 // Initialize Firebase
