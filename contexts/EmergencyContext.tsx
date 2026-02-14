@@ -269,6 +269,8 @@ export const EmergencyProvider: React.FC<{ children: ReactNode }> = ({ children 
   ) => {
     try {
       // Use the Firestore document ID directly (passed from AdminDashboard as doc.id)
+      console.log("Updating hospital ID:", hospitalId);
+
       const hospitalDocRef = doc(db, "hospitals", hospitalId);
       
       const updateData: any = { 
