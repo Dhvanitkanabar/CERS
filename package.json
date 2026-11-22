@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node backend/server.js",
+    "test:backend": "node --test backend/tests/adaptionService.test.js",
+    "dataset:generate": "node backend/scripts/prepareAdaptionDataset.js"
   },
   "dependencies": {
     "@byteowls/capacitor-sms": "^7.0.0",

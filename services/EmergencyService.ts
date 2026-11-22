@@ -41,45 +41,75 @@ export class EmergencyService {
      * Core SOS Logic: Checks network and executes either Online or Offline path
      */
     static async triggerSOS(guardianNumber: string, onOnlineSubmit: (coords: { lat: number, lng: number }) => Promise<void>) {
+        let lat = 21.1702;
+        let lng = 72.8311; // Default fallback: Surat, Gujarat
+
+        // 1. Attempt to get current location safely
+        try {
+            if (navigator && navigator.geolocation) {
+                const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 5000
+                    });
+                }).catch(() => null);
+
+                if (pos?.coords) {
+                    lat = pos.coords.latitude;
+                    lng = pos.coords.longitude;
+                }
+            } else {
+                const coordinates = await Geolocation.getCurrentPosition({
+                    enableHighAccuracy: true,
+                    timeout: 5000
+                }).catch(() => null);
+
+                if (coordinates?.coords) {
+                    lat = coordinates.coords.latitude;
+                    lng = coordinates.coords.longitude;
+                }
+            }
+        } catch (locErr) {
+            console.warn('Location retrieval fallback used:', locErr);
+        }
+
+        // 2. Check network connectivity
+        let isOnline = true;
         try {
             const status = await Network.getStatus();
-            console.log('Network Status:', status);
+            isOnline = Boolean(status.connected);
+        } catch {
+            isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+        }
 
-            // 1. Get current location
-            const coordinates = await Geolocation.getCurrentPosition({
-                enableHighAccuracy: true,
-                timeout: 10000
-            });
+        console.log(`SOS Status: Online=${isOnline}, Coords=(${lat}, ${lng})`);
 
-            const { latitude: lat, longitude: lng } = coordinates.coords;
-            const googleMapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
+        // 3. Online path: submit immediately
+        if (isOnline) {
+            console.log('Device is ONLINE. Submitting emergency to CERS+ network...');
+            await onOnlineSubmit({ lat, lng });
+            return;
+        }
 
-            if (status.connected) {
-                console.log('Device is ONLINE. Submitting to API...');
-                await onOnlineSubmit({ lat, lng });
-            } else {
-                console.log('Device is OFFLINE. Triggering SMS Fallback (Intent style)...');
+        // 4. Offline path: trigger SMS fallback only on supported native platforms
+        const isNative = Capacitor.isNativePlatform();
+        const googleMapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
+        const message = `EMERGENCY! I need immediate help. My location: ${googleMapsLink}`;
 
-                const message = `EMERGENCY! I need help. My location: ${googleMapsLink}`;
-
-                // 🟢 Use @byteowls/capacitor-sms which opens the SMS app with pre-filled content
-                // This is the "Satellite-style" fallback that works on all Android versions.
+        if (isNative && guardianNumber) {
+            try {
+                console.log('Device is OFFLINE. Triggering SMS Fallback...');
                 await SmsManager.send({
                     numbers: [guardianNumber],
                     text: message
                 });
-
-                console.log('SMS Intent triggered');
+            } catch (smsErr) {
+                console.error('SMS fallback failed:', smsErr);
+                window.location.href = `sms:${guardianNumber}?body=${encodeURIComponent(message)}`;
             }
-        } catch (error: any) {
-            console.error('SOS Logic Failed:', error);
-            const errorMsg = error.message || 'Unknown SOS Error';
-
-            // Final fallback if GPS or Network check fails
-            if (guardianNumber) {
-                alert('Primary SOS failed. Opening SMS fallback manually. Error: ' + errorMsg);
-                window.location.href = `sms:${guardianNumber}?body=EMERGENCY! I need help. My network/GPS failed.`;
-            }
+        } else {
+            // Still try online submit in case browser network was misreported
+            await onOnlineSubmit({ lat, lng });
         }
     }
 }

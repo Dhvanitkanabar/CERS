@@ -90,6 +90,38 @@ export interface EmergencyIncident {
   assignedDoctor?: string; // 🟢 Added for reporting
   ambulanceLocation?: LocationData; // 🚑 Added for live tracking
   hospitalLocation?: LocationData; // 🏥 Added for reference on map
+  aiIntelligence?: AIAnalysisRecord; // 🤖 Adaption Labs / Gemini AI Emergency Intelligence
+}
+
+export interface AIIncidentIntelligence {
+  summary: string;
+  extractedInfo: {
+    category: string;
+    emergencyType: string;
+    reportedSymptoms: string[];
+    locationAddress?: string;
+    callerName?: string;
+    patientCount?: string;
+    reportedVitals?: string;
+    environmentalHazards?: string[];
+  };
+  dispatcherBrief: string;
+  missingInfo: string[];
+  operationalConsiderations: string[];
+  detectedLanguage?: string;
+  confidenceScore?: number;
+}
+
+export interface AIAnalysisRecord {
+  incidentId: string;
+  provider: 'adaption' | 'gemini';
+  model: string;
+  result: AIIncidentIntelligence;
+  status: 'completed' | 'failed' | 'pending';
+  timestamp: string;
+  latencyMs?: number;
+  fallbackUsed?: boolean;
+  error?: string;
 }
 
 export enum EmergencyCategory {

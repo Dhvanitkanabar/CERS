@@ -63,12 +63,12 @@ const GeneralApp: React.FC<GeneralAppProps> = ({ onLogout }) => {
     setIsDispatching(true);
     const startTime = Date.now();
 
-    // 🟢 Fix: Calculate guardianNumber with stricter filtering
+    // Calculate guardianNumber with fallback to national emergency services
     const validContacts = user?.emergencyContacts?.filter(c => {
       const sanitized = (c.phone || '').replace(/[^0-9]/g, ''); // Strip all non-digits
       return sanitized.length > 5 && !sanitized.includes('123456789');
     }) || [];
-    const guardianNumber = validContacts[0]?.phone || '100';
+    const guardianNumber = validContacts[0]?.phone || '108'; // Default Emergency Services (Ambulance 108 / 112)
 
     console.log('DEBUG: SOS Guardian Selection', {
       allContacts: user?.emergencyContacts,
@@ -76,18 +76,17 @@ const GeneralApp: React.FC<GeneralAppProps> = ({ onLogout }) => {
       selected: guardianNumber
     });
 
-    // Perform dispatch
-    if (guardianNumber === '100' && validContacts.length === 0) {
-      alert("No emergency contacts found. Please add at least one guardian number in your profile settings to enable SOS alerts.");
-      setIsDispatching(false);
-      return;
+    // 🚨 Always dispatch to hospital & emergency network regardless of personal contacts
+    try {
+      await dispatchEmergency(null, coords);
+    } catch (dispatchErr) {
+      console.error('Dispatch Emergency error:', dispatchErr);
     }
-    await dispatchEmergency(null, coords);
 
-    // Ensure the loading screen shows for at least 2 seconds for UX reassurance
+    // Ensure the loading screen shows for at least 1.5 seconds for UX reassurance
     const elapsedTime = Date.now() - startTime;
-    if (elapsedTime < 2000) {
-      await new Promise(r => setTimeout(r, 2000 - elapsedTime));
+    if (elapsedTime < 1500) {
+      await new Promise(r => setTimeout(r, 1500 - elapsedTime));
     }
 
     setIsDispatching(false);

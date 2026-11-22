@@ -26,9 +26,21 @@ const ActiveEmergency: React.FC<ActiveEmergencyProps> = ({ type, onClose, onUpda
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [videoCollapsed, setVideoCollapsed] = useState(false);
+  const [videoSavedNotification, setVideoSavedNotification] = useState<string | null>(null);
+
+  // Guard against recording loops: remember if recording completed in this emergency session
+  const hasRecordedRef = React.useRef(false);
+  const typePromptedRef = React.useRef<string | null>(null);
 
   // Find the current emergency object to get its live location
   const currentEmergency = activeEmergencies.find(e => e.userId === currentUser?.id && e.status !== 'resolved');
+
+  // If this emergency already has recorded evidence, mark it permanently recorded
+  useEffect(() => {
+    if (currentEmergency?.videoEvidence) {
+      hasRecordedRef.current = true;
+    }
+  }, [currentEmergency?.videoEvidence]);
 
   // Safety delay for cancel button
   useEffect(() => {
@@ -36,12 +48,16 @@ const ActiveEmergency: React.FC<ActiveEmergencyProps> = ({ type, onClose, onUpda
     return () => clearTimeout(timer);
   }, []);
 
-  // Auto-show video recorder when type is selected
+  // Auto-show video recorder ONLY ONCE on initial emergency type selection
   useEffect(() => {
-    if (type) {
-      setShowVideo(true);
+    if (type?.id && typePromptedRef.current !== type.id) {
+      typePromptedRef.current = type.id;
+      // ONLY launch camera if never recorded before in this emergency
+      if (!hasRecordedRef.current && !currentEmergency?.videoEvidence) {
+        setShowVideo(true);
+      }
     }
-  }, [type]);
+  }, [type?.id]);
 
   const handleVibrate = () => {
     if (navigator.vibrate) navigator.vibrate(50);
@@ -59,12 +75,16 @@ const ActiveEmergency: React.FC<ActiveEmergencyProps> = ({ type, onClose, onUpda
   };
 
   const handleVideoSave = (video: VideoEvidence) => {
+    // Flag recorded permanently so re-renders/Firestore updates NEVER auto-open camera again
+    hasRecordedRef.current = true;
     if (currentEmergency) {
       addVideoEvidence(currentEmergency.id, video);
     }
-    // Unmount the VideoRecorder so the map + precautions page comes back
+    // Automatically hide the camera section immediately
     setShowVideo(false);
     setVideoCollapsed(false);
+    setVideoSavedNotification('Evidence video automatically saved to laptop local storage & synced.');
+    setTimeout(() => setVideoSavedNotification(null), 4000);
   };
 
   // --- PHASE 2: UNSPECIFIED EMERGENCY (Selection Grid) ---
@@ -232,6 +252,27 @@ const ActiveEmergency: React.FC<ActiveEmergencyProps> = ({ type, onClose, onUpda
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto no-scrollbar pb-24 relative">
+
+        {/* Video Auto-Saved Notification Banner */}
+        {videoSavedNotification && (
+          <div className="mx-4 mt-3 bg-emerald-500/20 border border-emerald-500/50 rounded-2xl p-4 flex items-center justify-between shadow-lg backdrop-blur-md animate-in slide-in-from-top duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <CheckCircle size={22} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-emerald-300">{videoSavedNotification}</p>
+                <p className="text-[11px] text-emerald-400/80">File downloaded to your laptop & securely stored in local database.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setVideoSavedNotification(null)}
+              className="text-emerald-400/60 hover:text-emerald-200 p-1"
+            >
+              <XCircle size={18} />
+            </button>
+          </div>
+        )}
 
         {/* VIDEO CONTAINER: EXPANDED MODE */}
         {showVideo && (

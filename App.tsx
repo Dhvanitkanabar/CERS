@@ -121,6 +121,7 @@ const SimpleErrorFallback = () => (
 const AppContent: React.FC = () => {
   const [authState, setAuthState] = React.useState<AuthState>('landing');
   const [userRole, setUserRole] = React.useState<UserRole>(null);
+  const [currentPath, setCurrentPath] = React.useState<string>(window.location.pathname);
 
   // 🟢 Modal States
   const [showSuccessModal, setShowSuccessModal] = React.useState(false);
@@ -130,24 +131,50 @@ const AppContent: React.FC = () => {
   const [isAdminAuth, setIsAdminAuth] = React.useState(false);
   const { logoutUser, currentUser, activeEmergencies } = useEmergencySystem();
 
-  const isResetPath = window.location.pathname === '/reset-password';
-  const isAdminPath = window.location.pathname === '/admin-panel';
-  const isInsurancePath = window.location.pathname === '/insurance';
-  const isInsuranceDashboardPath = window.location.pathname === '/insurance/dashboard';
-  const isLoginPath = window.location.pathname === '/login';
-  const isSignupPath = window.location.pathname === '/signup';
-  const isHospitalSignupPath = window.location.pathname === '/signup/hospital';
-  const isAboutPath = window.location.pathname === '/about';
-  const isContactPath = window.location.pathname === '/contact';
-  const isFeaturesPath = window.location.pathname === '/features';
-
-  // 🟢 Session Restoration: If we have a user in context, put them back into 'authenticated' state
+  // Listen to browser navigation (Back / Forward buttons)
   React.useEffect(() => {
-    if (currentUser && authState === 'landing' && !isLoginPath && !isSignupPath && !isHospitalSignupPath) {
-      console.log("🔄 Session Restored:", currentUser.role);
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const isResetPath = currentPath === '/reset-password';
+  const isAdminPath = currentPath === '/admin-panel';
+  const isInsurancePath = currentPath === '/insurance';
+  const isInsuranceDashboardPath = currentPath === '/insurance/dashboard';
+  const isLoginPath = currentPath === '/login';
+  const isSignupPath = currentPath === '/signup';
+  const isHospitalSignupPath = currentPath === '/signup/hospital';
+  const isAboutPath = currentPath === '/about';
+  const isContactPath = currentPath === '/contact';
+  const isFeaturesPath = currentPath === '/features';
+
+  // 🟢 Session Restoration & Route Synchronization
+  React.useEffect(() => {
+    // 1. If user is authenticated in context or session
+    if (currentUser) {
+      console.log("🔄 Session Active:", currentUser.role);
       setUserRole(currentUser.role);
-      setAuthState('authenticated');
-    } else if (isLoginPath) {
+
+      if (currentPath === '/insurance/dashboard') {
+        setAuthState('insurance-dashboard');
+      } else if (currentPath === '/insurance') {
+        setAuthState('insurance');
+      } else {
+        setAuthState('authenticated');
+        // If the URL is still /login or /signup, update it to / without kicking the user out
+        if (currentPath === '/login' || currentPath === '/signup' || currentPath === '/signup/hospital') {
+          setCurrentPath('/');
+          window.history.replaceState({}, '', '/');
+        }
+      }
+      return;
+    }
+
+    // 2. If user is unauthenticated, route strictly by currentPath
+    if (isLoginPath) {
       setAuthState('login');
     } else if (isSignupPath) {
       setAuthState('signup-general');
@@ -156,11 +183,11 @@ const AppContent: React.FC = () => {
     } else if (isInsurancePath) {
       setAuthState('insurance');
     } else if (isInsuranceDashboardPath) {
-      setAuthState('insurance-dashboard');
-    } else if (isAboutPath || isContactPath || isFeaturesPath) {
+      setAuthState('insurance');
+    } else {
       setAuthState('landing');
     }
-  }, [currentUser, authState, isLoginPath, isSignupPath, isHospitalSignupPath, isInsurancePath, isInsuranceDashboardPath, isAboutPath, isContactPath, isFeaturesPath]);
+  }, [currentUser, currentPath, isLoginPath, isSignupPath, isHospitalSignupPath, isInsurancePath, isInsuranceDashboardPath]);
 
   // 🟢 Proactive Permission Fetching on Launch
   useEffect(() => {
@@ -179,25 +206,30 @@ const AppContent: React.FC = () => {
 
   const navigateToLogin = () => {
     setAuthState('login');
+    setCurrentPath('/login');
     window.history.pushState({}, '', '/login');
   };
 
   const navigateToGeneralSignUp = () => {
     setAuthState('signup-general');
+    setCurrentPath('/signup');
     window.history.pushState({}, '', '/signup');
   };
 
   const navigateToHospitalSignUp = () => {
     setAuthState('signup-hospital');
+    setCurrentPath('/signup/hospital');
     window.history.pushState({}, '', '/signup/hospital');
   };
 
   const navigateToInsurance = () => {
     if (userRole === 'general') {
       setAuthState('insurance-dashboard');
+      setCurrentPath('/insurance/dashboard');
       window.history.pushState({}, '', '/insurance/dashboard');
     } else {
       setAuthState('insurance');
+      setCurrentPath('/insurance');
       window.history.pushState({}, '', '/insurance');
     }
   };
@@ -209,12 +241,15 @@ const AppContent: React.FC = () => {
   const handleAdminLoginSuccess = () => {
     setIsAdminAuth(true);
     setShowAdminModal(false);
+    setCurrentPath('/admin-panel');
     window.history.pushState({}, '', '/admin-panel');
   };
 
   const handleLoginSuccess = (role: UserRole) => {
     setUserRole(role);
     setAuthState('authenticated');
+    setCurrentPath('/');
+    window.history.replaceState({}, '', '/');
   };
 
   const handleSignUpComplete = (type: 'general' | 'hospital') => {
@@ -229,12 +264,15 @@ const AppContent: React.FC = () => {
   const closeAndGoToLogin = () => {
     setShowSuccessModal(false);
     setAuthState('login');
+    setCurrentPath('/login');
+    window.history.pushState({}, '', '/login');
   };
 
   const handleLogout = () => {
     setAuthState('landing');
     setUserRole(null);
     setIsAdminAuth(false);
+    setCurrentPath('/');
     window.history.pushState({}, '', '/');
     logoutUser();
   };
@@ -243,11 +281,13 @@ const AppContent: React.FC = () => {
     setAuthState('landing');
     setUserRole(null);
     setIsAdminAuth(false);
+    setCurrentPath('/');
     window.history.pushState({}, '', '/');
   };
 
   const navigateToInsurancePlans = () => {
     setAuthState('insurance');
+    setCurrentPath('/insurance');
     window.history.pushState({}, '', '/insurance');
   };
 
