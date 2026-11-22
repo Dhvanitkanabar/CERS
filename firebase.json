@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "cers-plus",
     "public": "dist",
     "ignore": [
       "firebase.json",

@@ -16,9 +16,9 @@ export const config = {
   // Adaption Labs API Configuration
   adaption: {
     apiKey: process.env.ADAPTION_API_KEY || '',
-    model: process.env.ADAPTION_MODEL || 'qwen3.5-397b',
+    model: process.env.ADAPTION_MODEL || 'deepseek-v4-flash',
     apiBaseUrl: process.env.ADAPTION_API_BASE_URL || 'https://api.prod.adaptionlabs.ai/api/v1',
-    timeoutMs: parseInt(process.env.ADAPTION_TIMEOUT_MS || '25000', 10),
+    timeoutMs: parseInt(process.env.ADAPTION_TIMEOUT_MS || '35000', 10),
   },
 
   // Gemini Fallback Configuration
